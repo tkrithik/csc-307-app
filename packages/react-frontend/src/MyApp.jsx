@@ -7,11 +7,11 @@ function MyApp() {
   const [characters, setCharacters] = useState([]);
 
   function fetchUsers() {
-    return fetch("http://localhost:8000/users");
+    return fetch("http://localhost:3000/users");
   }
 
   function postUser(person) {
-    return fetch("http://localhost:8000/users", {
+    return fetch("http://localhost:3000/users", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -21,7 +21,7 @@ function MyApp() {
   }
 
   function deleteUser(id) {
-    return fetch(`http://localhost:8000/users/${id}`, {
+    return fetch(`http://localhost:3000/users/${id}`, {
       method: "DELETE",
     });
   }
@@ -29,7 +29,7 @@ function MyApp() {
   useEffect(() => {
     fetchUsers()
       .then((res) => res.json())
-      .then((json) => setCharacters(json["users_list"]))
+      .then((json) => setCharacters(json))
       .catch((error) => {
         console.log(error);
       });
@@ -51,18 +51,15 @@ function MyApp() {
       });
   }
 
-  function removeOneCharacter(id) {
+  function removeOneCharacter(index) {
+    const id = characters[index]._id;
     deleteUser(id)
       .then((res) => {
-        if (res.status === 204) {
-          const updated = characters.filter((character) => {
-            return character.id !== id;
-          });
+        if (res.ok) {
+          const updated = characters.filter((character, i) => i !== index);
           setCharacters(updated);
-        } else if (res.status === 404) {
-          throw new Error("User not found");
         } else {
-          throw new Error("Delete failed");
+          throw new Error("User was not deleted");
         }
       })
       .catch((error) => {

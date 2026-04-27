@@ -1,117 +1,84 @@
-// backend.js
 import express from "express";
+import cors from "cors";
+import dotenv from "dotenv";
+import mongoose from "mongoose";
+
+import {
+  getUsers,
+  getUserById,
+  addUser,
+  findUserByName,
+  findUserByJob,
+  findUserByNameAndJob,
+  deleteUserById,
+} from "./services/user-service.js";
+
+dotenv.config();
+
+const { MONGO_CONNECTION_STRING } = process.env;
+
+mongoose.set("debug", true);
+mongoose
+  .connect(MONGO_CONNECTION_STRING + "users")
+  .catch((error) => console.log(error));
 
 const app = express();
-const port = 8000;
-
-import cors from "cors";
 app.use(cors());
-
 app.use(express.json());
 
-const users = {
-  users_list: [
-    {
-      id: "xyz789",
-      name: "Charlie",
-      job: "Janitor",
-    },
-    {
-      id: "abc123",
-      name: "Mac",
-      job: "Bouncer",
-    },
-    {
-      id: "ppp222",
-      name: "Mac",
-      job: "Professor",
-    },
-    {
-      id: "yat999",
-      name: "Dee",
-      job: "Aspring actress",
-    },
-    {
-      id: "zap555",
-      name: "Dennis",
-      job: "Bartender",
-    },
-  ],
-};
-
-const findUserByName = (name) => {
-  return users["users_list"].filter((user) => user["name"] === name);
-};
-
-const findUserByNameAndJob = (name, job) => {
-  return users["users_list"].filter(
-    (user) => user["name"] === name && user["job"] === job
-  );
-};
-
-const findUserById = (id) =>
-  users["users_list"].find((user) => user["id"] === id);
-
-const generateId = () => Math.random().toString(36).substring(2, 9);
-
-const addUser = (user) => {
-  const newUser = { ...user, id: generateId() };
-  users["users_list"].push(newUser);
-  return newUser;
-};
-
-const deleteUserById = (id) => {
-  const index = users["users_list"].findIndex((u) => u.id === id);
-  if (index !== -1) {
-    users["users_list"].splice(index, 1);
-    return true;
-  }
-  return false;
-};
-
-app.get("/", (req, res) => {
-  res.send("Hello World!");
-});
-
 app.get("/users", (req, res) => {
-  const name = req.query.name;
-  const job = req.query.job;
+  const { name, job } = req.query;
 
-  if (name != undefined && job != undefined) {
-    let result = findUserByNameAndJob(name, job);
-    result = { users_list: result };
-    res.send(result);
-  } else if (name != undefined) {
-    let result = findUserByName(name);
-    result = { users_list: result };
-    res.send(result);
+  if (name && job) {
+    findUserByNameAndJob(name, job)
+      .then((users) => res.send(users))
+      .catch((error) => res.status(500).send(error));
+  } else if (name) {
+    findUserByName(name)
+      .then((users) => res.send(users))
+      .catch((error) => res.status(500).send(error));
+  } else if (job) {
+    findUserByJob(job)
+      .then((users) => res.send(users))
+      .catch((error) => res.status(500).send(error));
   } else {
-    res.send(users);
+    getUsers()
+      .then((users) => res.send(users))
+      .catch((error) => res.status(500).send(error));
   }
 });
 
 app.get("/users/:id", (req, res) => {
-  const id = req.params["id"];
-  let result = findUserById(id);
-
-  if (result === undefined) {
-    res.send("Resource not found.");
-  } else {
-    res.send(result);
-  }
+  getUserById(req.params.id)
+    .then((user) => {
+      if (!user) {
+        res.status(404).send("User not found");
+      } else {
+        res.send(user);
+      }
+    })
+    .catch((error) => res.status(500).send(error));
 });
 
 app.post("/users", (req, res) => {
-  const newUser = addUser(req.body);
-  res.status(201).send(newUser);
+  addUser(req.body)
+    .then((user) => res.status(201).send(user))
+    .catch((error) => res.status(500).send(error));
 });
 
 app.delete("/users/:id", (req, res) => {
-  const success = deleteUserById(req.params.id);
-  if (success) res.sendStatus(204);
-  else res.sendStatus(404);
+  deleteUserById(req.params.id)
+    .then((user) => {
+      if (!user) {
+        res.status(404).send("User not found");
+      } else {
+        res.send(user);
+      }
+    })
+    .catch((error) => res.status(500).send(error));
 });
 
+const port = 3000;
 app.listen(port, () => {
-  console.log(`Example app listening at http://localhost:${port}`);
+  console.log(`Server is running on port ${port}`);
 });
